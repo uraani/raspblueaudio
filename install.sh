@@ -87,23 +87,23 @@ WantedBy=bluetooth.target
 EOF
 systemctl enable --now bluealsa-aplay.service
 echo "Adding bluetooth agent"
-echo -n "Set 4 digit bluetooth pin code, leave empty if no pin required: "
-read REPLY
-REGEX='^[0-9]{4}$'
-if [[ ! "$REPLY" =~ $REGEX ]]
-then
-cat <<'EOF' > /etc/bluetooth/pin.conf
-* *
-EOF
-echo "No pin configured"
-else
-cat <<EOF > /etc/bluetooth/pin.conf
-* $REPLY
-EOF
-echo "Pin is valid and is now configured"
-fi
-chown root:root /etc/bluetooth/pin.conf
-chmod 600 /etc/bluetooth/pin.conf
+#echo -n "Set 4 digit bluetooth pin code, leave empty if no pin required: "
+#read REPLY
+#REGEX='^[0-9]{4}$'
+#if [[ ! "$REPLY" =~ $REGEX ]]
+#then
+#cat <<'EOF' > /etc/bluetooth/pin.conf
+#* *
+#EOF
+#echo "No pin configured"
+#else
+#cat <<EOF > /etc/bluetooth/pin.conf
+#* $REPLY
+#EOF
+#echo "Pin is valid and is now configured"
+#fi
+#chown root:root /etc/bluetooth/pin.conf
+#chmod 600 /etc/bluetooth/pin.conf
 cat <<'EOF' > /etc/systemd/system/bt-agent.service
 [Unit]
 Description=Bluetooth Auth Agent
@@ -113,10 +113,10 @@ PartOf=bluetooth.service
 [Service]
 Type=simple
 ExecStartPre=/bin/hciconfig hci0 piscan
-ExecStartPre=/bin/hciconfig hci0 sspmode 0
+ExecStartPre=/bin/hciconfig hci0 sspmode 1
 ExecStartPre=/usr/bin/bluetoothctl discoverable on
-ExecStart=/usr/bin/bt-agent -c NoInputNoOutput -p /etc/bluetooth/pin.conf
-RestartSec=5
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+RestartSec=10
 Restart=always
 KillSignal=SIGUSR1
 
@@ -133,6 +133,11 @@ chmod 644 /media/fail.wav
 cat <<'EOF' > /usr/local/bin/bluetooth-udev
 #!/bin/bash
 logger bluetooth action "$ACTION" triggered by "$NAME"
+TRIMMEDNAME="${NAME%\"}"
+TRIMMEDNAME="${TRIMMEDNAME#\"}"
+echo "$TRIMMEDNAME"
+#ignore vc4
+if [ "$TRIMMEDNAME" = "vc4"  ]; then exit 0; fi
 action=$(expr "$ACTION" : "\([a-zA-Z]\+\).*")
 if [ "$action" = "add" ]; then
     bluetoothctl discoverable off
